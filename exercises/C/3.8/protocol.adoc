@@ -1,0 +1,389 @@
+== 1 Protocol Overview
+
+The following specification defines a protocol capable of 
+serializing simple data structures and transmitting them. Specifically, the protocol supports signed 64bit integers, unsigned 64bit integers, strings of any length, arrays of any supported data type, and Python-like dictionaries
+with key:value pairs, where the key can be an integer or a string, and the value can be any supported data type. 
+
+
+The protocol is designed to be transmitted over TCP; as such, 
+TCP directly handles data integrity and checksums. This protocol implemented as a stream. As such, it is designed to support partial reads and writes. Every field is either fixed-width or proceeded by a length if variable-width. 
+
+Consider the following list of possible types supported by the the protocol:
+[source]
+----
+<UINT64>       ::= <Unsigned 64 Bit Integer>
+<INT64>        ::= <Signed 64 Bit Integer>
+<STRING>       ::= <Variable-Length String of Bytes>
+<NULL>         ::= <Empty Set: no item>
+<ARRAY_NODE>   ::= <NULL> | <UINT64> | <INT64> | <STRING> | <DICT>
+<ARRAY>        ::= <ARRAY_NODE><ARRAY>  | <ARRAY_NODE>
+<DICT_KEY>     ::= <INT64> | <STRING>
+<DICT_VAL>     ::= <ARRAY_NODE> | <ARRAY>
+:              ::= <Signifies KEY:VAL Relationship>
+<DICT_NODE>    ::= <DICT_KEY>:<DICT_VAL>
+<DICT>         ::= <NULL> | <DICT_NODE><DICT>
+----
+
+Put more simply, there are five possible types:
+
+* *UINT64* - unsigned 64 bit integer
+* *INT64*  - signed 64 bit integer
+* *STRING* - variable-length string of bytes
+* *ARRAY*  - list of zero or more entries of any possible type
+* *DICT*   - a collection of key:value pairings, as defined as follows:
+** *KEY* - either an INT64 or STRING
+** *VAL* - any possible type
+
+
+== 2 Protocol Fields
+
+The *HEADER* (H) field is a single byte and identifies the type of object to be sent. This is the first byte in the stream.
+
+Possible values are as follows:
+[source,C]
+----
+// PROTOCOL DATA TYPES:
+#define PROTO_UINT64 0x00
+#define PROTO_INT64  0x01
+#define PROTO_STRING 0x02
+#define PROTO_ARRAY  0x03
+#define PROTO_DICT   0x04
+#define PROTO_NULL   0xFF
+----
+
+Note that the these possible values in the HEADER are also the possible values
+in the DATA_TYPE fields in arrays and dictionaries later in the protocol. 
+
+The next byte in the stream depends on the data type defined in the first byte. 
+
+Please note that all fields are in network byte order. 
+
+// diagrams generated with https://github.com/luismartingarcia/protocol 
+
+=== 2.a PROTO_UINT64 (UINT64)
+
+After the HEADER, the next 8 bytes a comprised of an unsigned 64 bit integer in network byte order.
+
+[source]
+----
+ 0                   1                   2                   3  
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     HEADER    |                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                             UINT64                            |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |
++-+-+-+-+-+-+-+-+
+----
+
+=== 2.b PROTO_INT64 (INT64)
+
+After the HEADER, the next 8 bytes a comprised of a signed 64 bit integer in network byte order.
+
+[source]
+----
+ 0                   1                   2                   3  
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     HEADER    |                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                             INT64                             |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |
++-+-+-+-+-+-+-+-+
+----
+
+=== 2.c PROTO_STRING
+
+After the HEADER, there are one or more windows, consisting of header and data sections. Multiple windows in the string allow for strings longer than the fixed length of a max integer. 
+
+The string window header has two parts:
+
+* *STR_WINDOW_LENGTH* (WL) [2 Bytes] - an unsigned integer depicting the length of this window in the string.
+
+* *STR_LAST_WINDOW* (LW) [1 Byte] - if the STR_WINDOW_LENGTH is `0xFFFF` and this field is zero, there should be another string window in the stream. Otherwise, the current window is the last window in the string. 
+
+The *STR_WINDOW_DATA* (WD) section has a length between 0 and 0xFFFF. 
+
+
+For a 16 byte string, the stream would look like this: 
+[source]
+----
+ 0                   1                   2                   3  
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     HEADER    |       STR_WINDOW_LENGTH       |STR_LAST_WINDOW|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                                                               +
+|                                                               |
++                        STR_WINDOW_DATA                        +
+|                                                               |
++                                                               +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+----
+
+For successive windows, there is no protocol header, but the STR_WINDOW_LENGTH, STR_LAST_WINDOW, and STR_WINDOW_DATA fields are repeated until the STR_LAST_WINDOW field contains a non-zero value. 
+
+
+They are formatted in as such: 
+----
+WINDOW_HEADER->WINDOW_DATA->
+WINDOW_HEADER->WINDOW_DATA->
+WINDOW_HEADER(last window set to 1)->WINDOW_DATA
+----
+
+For example, see an example of a multiple windows, of sizes 0xFFFF bytes, 0xFFFF bytes, and 4 bytes, respectively:
+
+// ./protocol "HEADER:8,STR_WINDOW_LENGTH:16,STR_LAST_WINDOW:8,STR_WINDOW_DATA:192,STR_WINDOW_LENGTH:16,STR_LAST_WINDOW:8,STR_WINDOW_DATA:192,STR_WINDOW_LENGTH:16,STR_LAST_WINDOW:8,STR_WINDOW_DATA:32"
+
+[source]
+----
+ 0                   1                   2                   3  
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     HEADER    |       STR_WINDOW_LENGTH       |STR_LAST_WINDOW|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+|                                                               |
++                        STR_WINDOW_DATA                        +
+|                                                               |
++                                                               +
+                        [...truncated...]
+|                                                               |
++                                                               +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|       STR_WINDOW_LENGTH       |STR_LAST_WINDOW|               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               +
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+                        [...truncated...]
+|                                                               |
++                                                               +
+|                        STR_WINDOW_DATA                        |
++                                               +-+-+-+-+-+-+-+-+
+|                                               |STR_WINDOW_LEN.|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |STR_LAST_WINDOW|        STR_WINDOW_DATA        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+----
+
+
+=== 2.d PROTO_ARRAY
+
+After the HEADER, the array stream has one or more array nodes; the array node
+comprises of a header and a data section.
+
+An array node header is comprised of the following values:
+
+* ARRAY_NODE_LAST_ITEM - 1 byte boolean value. A non-zero value signifies it is the last item in the array. 
+
+* ARRAY_NODE_DATA_TYPE - 1 byte value. These values match the possible values in the stream header. 
+
+Note that if the first node ARRAY_NODE_DATA_TYPE field is PROTO_NULL, or empty set, this signifies an empty array. The data is assumed to be zero-length.
+
+The node array data then follows the stream specification as a new item in a recursive manner. In this context, the DATA_TYPE acts in the same function as the stream header itself. 
+
+For an array of an unsigned int, a signed int, and a 16 byte string, the packet would look like this:
+
+[source]
+----
+ 0                   1                   2                   3  
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     HEADER    |   LAST_ITEM   |   DATA_TYPE   |               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               +
+|                          NODE_UINT64                          |
++                                               +-+-+-+-+-+-+-+-+
+|                                               |   LAST_ITEM   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   DATA_TYPE   |                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                           NODE_INT64                          |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |   LAST_ITEM   |   DATA_TYPE   |  NODE_STR_LEN |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               | NODE_STRING_LW|                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+|                        NODE_STRING_DATA                       |
++                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+----
+
+
+=== 2.e PROTO_DICT
+
+
+After the HEADER, the dictionary stream has zero or more dictionary nodes;
+ the dictionary node comprises of a header and a data section. 
+
+An dictionary node header is comprised of the following values:
+
+* DICT_NODE_LAST_ITEM - 1 byte boolean value. A non-zero value signifies it is the last item in the array. 
+
+* DICT_NODE_KEY_TYPE - 1 byte value. This can be either a signed int or a string (INT64, STRING). 
+
+* DICT_NODE_VAL_TYPE - 1 byte value. These values match the possible values in the stream header. 
+
+Note that if the first node DICT_NODE_KEY_TYPE field is PROTO_NULL, or empty set, this signifies an empty dictionary. The data is assumed to be zero-length for this dictionary. 
+
+After the dictionary header, the dictionary key follows according to the specification for that data type. 
+
+After the dictionary key, the dictionary value follows according to the specification for that data type. 
+
+
+What follows is a dictionary with two items:
+
+* a node with a signed integer key and a 4-byte string value 
+
+* a node with a string key (6 bytes) and an array value, where the array has 2 unsigned integers. 
+
+[code]
+----
+ 0                   1                   2                   3  
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     HEADER    |   LAST_ITEM   |    KEY_TYPE   |    VAL_TYPE   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                             INT64                             +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|       STR_WINDOW_LENGTH       |STR_LAST_WINDOW|               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    WIN_DATA                   |   LAST_ITEM   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    KEY_TYPE   |    VAL_TYPE   |       STR_WINDOW_LENGTH       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|STR_LAST_WINDOW|                STR_WINDOW_DATA                |
++-+-+-+-+-+-+-+-+                               +-+-+-+-+-+-+-+-+
+|                                               |   LAST_ITEM   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   DATA_TYPE   |                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                          NODE_UINT64                          |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |   LAST_ITEM   |   DATA_TYPE   |               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               +
+|                          NODE_UINT64                          |
++                                               +-+-+-+-+-+-+-+-+
+----
+
+=== 2.f PROTO_NULL
+
+This field should only be used to describe empty arrays and empty dictionaries as specified in 2.d and 2.e. 
+
+Any other use should cause an error. 
+
+
+== 3 Edge Cases
+
+* If a protocol is specified that is not supported, the receiving parser should fail and raise an error. 
+
+* If a NULL node appears after the first item in an array, the receiving parser should fail and raise an error. 
+
+* If a NULL appears in the DICT_NODE_KEY_TYPE field after the first node in a dictionary, the receiving parser should fail and raise an error. 
+
+* If a NULL appears in the DICT_NODE_KEY_VAL field in a non-empty set, the receiving parser should fail and raise an error. 
+
+Note there can be nested empty arrays and empty dictionaries within parent dictionaries so long as the specification if followed. 
+
+== 4 Example
+
+Below is a complex nesting of arrays and dictionaries. 
+
+This example is a dictionary with three nodes: 
+
+* a node with a signed integer key and an empty array value
+
+* a node with a string key (6 bytes) and an empty dictionary value
+
+* a node with a signed integer key and an array with the following elements:
+** a string of length 12 bytes
+** a dictionary with a single node, with an integer key and a string value of 8 bytes. 
+** An array of 3 unsigned integers
+
+// ./protocol "HEADER:8,LAST_ITEM:8,KEY_TYPE:8,VAL_TYPE:8,INT64:64,LAST_ITEM:8,DATA_TYPE:8,LAST_ITEM:8,KEY_TYPE:8,VAL_TYPE:8,STR_WINDOW_LENGTH:16,STR_LAST_WINDOW:8,STR_WIN_DATA:48,LAST_ITEM:8,KEY_TYPE:8,VAL_TYPE:8,LAST_ITEM:8,KEY_TYPE:8,VAL_TYPE:8,INT64:64,LAST_ITEM:8,DATA_TYPE:8,STR_WINDOW_LENGTH:16,STR_LAST_WINDOW:8,STR_WINDOW_DATA:96,LAST_ITEM:8,DATA_TYPE:8,LAST_ITEM:8,KEY_TYPE:8,VAL_TYPE:8,INT64:64,STR_WINDOW_LENGTH:16,STR_LAST_WINDOW:8,STR_WIN_DATA:64,LAST_ITEM:8,DATA_TYPE:8,LAST_ITEM:8,DATA_TYPE:8,NODE_UINT64:64,LAST_ITEM:8,DATA_TYPE:8,NODE_UINT64:64,LAST_ITEM:8,DATA_TYPE:8,NODE_UINT64:64"
+[source]
+----
+ 0                   1                   2                   3  
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     HEADER    |   LAST_ITEM   |    KEY_TYPE   |    VAL_TYPE   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                             INT64                             +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   LAST_ITEM   |   DATA_TYPE   |   LAST_ITEM   |    KEY_TYPE   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    VAL_TYPE   |       STR_WINDOW_LENGTH       |STR_LAST_WINDOW|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          STR_WIN_DATA                         |
++                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |   LAST_ITEM   |    KEY_TYPE   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    VAL_TYPE   |   LAST_ITEM   |    KEY_TYPE   |    VAL_TYPE   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                             INT64                             +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   LAST_ITEM   |   DATA_TYPE   |       STR_WINDOW_LENGTH       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|STR_LAST_WINDOW|                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                                                               |
++                                                               +
+|                        STR_WINDOW_DATA                        |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |   LAST_ITEM   |   DATA_TYPE   |   LAST_ITEM   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    KEY_TYPE   |    VAL_TYPE   |                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+|                             INT64                             |
++                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |       STR_WINDOW_LENGTH       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|STR_LAST_WINDOW|                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                          STR_WIN_DATA                         |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |   LAST_ITEM   |   DATA_TYPE   |   LAST_ITEM   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   DATA_TYPE   |                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                          NODE_UINT64                          |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|               |   LAST_ITEM   |   DATA_TYPE   |               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+               +
+|                          NODE_UINT64                          |
++                                               +-+-+-+-+-+-+-+-+
+|                                               |   LAST_ITEM   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   DATA_TYPE   |                                               |
++-+-+-+-+-+-+-+-+                                               +
+|                          NODE_UINT64                          |
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+----
+
+
+
+
+Citation: diagrams generated with: http://www.luismg.com/protocol/

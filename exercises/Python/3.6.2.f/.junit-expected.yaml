@@ -1,0 +1,5 @@
+- overall: 3.6.2.f
+  test_files: [suite_results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: 3.6.2.f               # name of the test suite to load from in the xml
+    test_count: 3

@@ -1,0 +1,6 @@
+- overall: 3.6.2
+  test_files: [./build/3.6.2_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: "secure_code_tests"                # name of the test suite to load from in the xml
+    test_count: 7                    # number of tests to find in the test suite 
+

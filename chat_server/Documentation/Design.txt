@@ -1,0 +1,14 @@
+Design plan for chat server
+
+create server that accepts multiple clients
+
+use hashtable for clients to login
+
+Have multiple lobbies for users to join
+    lobbies will store file descriptors of user connections
+
+Users can create lobbies
+int lobby[10];
+
+must be able to transmit messages
+must be able to transmit files

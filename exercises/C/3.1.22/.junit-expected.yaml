@@ -1,0 +1,5 @@
+- overall: 3.1.22
+  test_files: [./build/test-results.xml]    # parsed relative to the location of this file
+  sub_items: 
+  - name: "game_tests"               # name of the test suite to load from in the xml
+    test_count: 6                    # number of tests to find in the test suite 

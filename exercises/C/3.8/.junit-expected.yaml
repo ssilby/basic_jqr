@@ -1,0 +1,24 @@
+- overall: 3.8.2
+  test_files: [./build/3.8_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: edge_cases                # name of the test suite to load from in the xml
+    test_count: 4                    # number of tests to find in the test suite
+  - name: general_tests                # name of the test suite to load from in the xml
+    test_count: 10                    # number of tests to find in the test suite 
+- overall: 3.8.3
+  test_files: [./build/3.8_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: edge_cases                # name of the test suite to load from in the xml
+    test_count: 4                    # number of tests to find in the test suite
+  - name: general_tests                # name of the test suite to load from in the xml
+    test_count: 10                    # number of tests to find in the test suite 
+- overall: 3.8.1
+  test_files: [./build/3.8_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: partial_io                # name of the test suite to load from in the xml
+    test_count: 2                    # number of tests to find in the test suite 
+
+
+
+
+

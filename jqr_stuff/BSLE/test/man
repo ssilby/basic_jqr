@@ -1,0 +1,78 @@
+NAME
+    Server
+        bin/file_server - creates an FTP server
+
+    Client 
+        test/client/client.py
+
+SYNOPSIS
+    file_server [-p port] [-d server-directory] [-t timeout]
+    client [ip/domain] [port]
+
+OPTIONS
+    -p port
+        Optional parameter to set port to listen on. Default is set to 4444.
+
+    -d directory
+        Required absolute path to directory that will hold ftp server files
+
+    -t timeout
+        Time in seconds a client can be inactive. Default is set to 600.
+
+PROJECT COMPILATION
+from the project home directory type 'make'
+'make clean' will remove associated .o and executable artifacts
+
+HOW TO START THE SERVICE
+To start the server run /bin/ftp_server with required -d parameter and any optional parameters.
+
+
+HOW TO CONNECT
+Once the server is running, the client should be called from its directory with the appropriate port and ip address.
+Server must be running first, as the client will automatically try to connect on startup.
+
+HOW TO INTERACT WITH CLIENT
+Type 'help' to list all client commands.
+Type 'help [command]' to get more detailed information on said command.
+User must first 'login' to be able to perform any actions.
+
+List of commands:
+
+login
+    User will be prompted for username followed by password
+    Use login again to switch users
+
+create_user [username] [password] [permission level (int)]
+    create a user with the appropriate permission level:
+    1: READ: can get files from server
+    2: READ/WRITE: can get and put files from server
+    3: ADMIN: can get and put files from server and delete existing users
+delete_user [username]
+    Admin level users can delete user with username if user exists
+get [src] [dst] 
+    Gets a  le from server [src] path and copies it into the client [dst] path
+put [src] [dst]  
+    Sends a  le from client [src] path to be placed in the server [dst] path
+help [opt: command]  
+    Print available commands, optionally describes given command
+quit / exit 
+    Closes client
+delete [path] 
+    Deletes  le at server [path]
+l_delete [path] 
+    Deletes  le at local [path]
+ls [optional path] Lists remote directory contents
+l_ls [optional path] 
+    Lists local directory contents
+mkdir [path] 
+    Makes directory at server [path]
+l_mdkir [path] 
+    Makes directory at client [path]
+
+
+KNOWN ISSUES
+The hash table passed to threads is not properly freed when server is terminated.
+
+AUTHOR
+   Steven Silbert
+   stevensilbertjr@gmail.com

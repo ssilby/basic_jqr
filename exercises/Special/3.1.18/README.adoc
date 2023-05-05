@@ -1,0 +1,79 @@
+= Exercise Overview
+
+This three-part exercise provides activities to demonstrate your skill
+in JQR item 3.1.18:
+
+----
+title: Demonstrate skill in compiling, linking, and debugging
+condition: C
+standard: B
+sub_items:
+  3.1.18.a: execute a program in a debugger to perform general debugging actions
+  3.1.18.b: create a program using the compilation and linking process
+  3.1.18.c: compile position-independent code using a cross-compiler
+----
+
+== Generating your random seed
+
+Each student should use the random seed generator in `./source/` to generate your random
+seed for this exercise. You can do this with the following commands
+
+[source,bash]
+----
+cd source
+gcc random.c -o random
+./random
+cd ..
+ls random.txt
+----
+
+This will create a random seed at the exercise root directory. You should commit
+this seed with your submission.
+
+
+=== 3.1.18.a: 
+
+To complete this, debug the 3.1.18.a_exe executable and determine the decimal
+value returned by the function that takes the random.txt file input. 
+Submit the decimal value by placing it in 3.1.18.a.txt. Ensure you 
+do not place extra spaces or new lines. 
+
+To submit this item, commit:
+
+* ./3.1.18.a.txt
+* ./random.txt
+
+If you are using GDB, you may like gef: https://gef.readthedocs.io/en/master/
+
+=== 3.1.18.b: 
+
+To complete this, compile and link 3.1.18.b.c source code with the shared
+object AlgoLib.so found in the lib subdirectory.  Once compiled and linked,
+execute the code and submit the returned text by placing its value in 
+3.1.18.b.txt. ensure you do not place extra spaces or new lines. 
+
+
+To submit this item, commit:
+
+* ./3.1.18.b.txt
+* ./random.txt
+
+See reference here: https://www.cprogramming.com/tutorial/shared-libraries-linux-gcc.html
+
+=== 3.1.18.c:
+
+To complete this, navigate to the 3.1.18.c directory and append the command to
+cross compile the 3.1.18.c.c source for ARMv8 processor, 64 bit, Position
+Independent Executable (PIE). Ensure that the output file is named "3.1.18.c".
+
+To submit this item, commit:
+
+* ./3.1.18.c/3.1.18.c 
+
+Alternatively, if you prefer to use the GitLab CI pipeline to compile this,
+you should update the compile.sh file with your compile instructions, specifying
+3.1.18.c as the output file, and commit your compile.sh file:
+
+* ./3.1.18.c/compile.sh
+
+You can use the script in `./script/prepare.sh` to configure your environment for cross-compiling. 

@@ -1,0 +1,30 @@
+'Describe the terms and fundamentals associated with object-oriented programming using Python:
+
+Class
+Classes create a new type of object allowing new instances of that type to be made. They consist of attributes and methods. Attributes help maintain a state while methonds allow for modifying that state.
+Object
+In Python, everything is an object. Objects are encapsulations of data that have variables and methods.
+Difference between an object when discussing a class
+Classes are blueprints from which you can create and instance, i.e. and object. Objects are instances of said classes.
+Advantages to object-oriented programming
+OOP makes code more modular, which allows for code that is easier to read and troubleshoot. Code can be reused via inheritance. Polymorphism allows for the same code to be used amongst different classes. Finally, OOP can be more intuitive because it more closely reflects real life.
+Inheritance
+Allows for the creation of a class that inherits all the methods and properties of another class. One parent class can have many childred that inherit its properties and methods preventing the need to rewrite the code over and overagain.
+The keyword "super"
+Super() returns a temporary object of the superclass that allows the subclass to call its methods. This comes in handy if you don't want to rewrite all of the methods from the superclass.
+Initialization function of a constructor
+Constructors can instantiate objects in a class. The __init__() method is the constructor of classes in python. It instantiates the data members of the class when an object is created.
+The keyword "self"
+Self is used to refer to the class object itself. It distinguished the class from the instantiated objects that are created from it.
+The getter and setter functions
+Getters and setters are used for the purpose of data encapsulation in Python. It allose attributes to be hidden, so that they cannot be modified accidentally by methods in other classes. Getters retrieve and attribute, while setter assign a value to an attribute.
+Attributes of a class
+Class attributes are variables of a class that are shared amongst all instances of that class.
+Factory design pattern
+In factory pattern, objects are created without exposing the logic to client and referring to the newly created object using a common interface.
+Singleton design pattern
+This pattern provides one and only one object of a particular type. It uses only one class to create methods.
+Adapter design pattern
+Creates a bridge between two incompatible interfaces. It is a class that allows other unrelated classes to be able to work together.
+Bridge design pattern
+This method allows one to separate the implementation specific abstractions and implementation independent abstractions from each other and can be developed considering as the single entities.

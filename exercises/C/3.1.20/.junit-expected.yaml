@@ -1,0 +1,10 @@
+- overall: 3.1.19
+  test_files: [./build/3.1.20_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: "bitwise_operators_tests"       # name of the test suite to load from in the xml
+    test_count: 1                  # number of tests to find in the test suite 
+- overall: 3.1.20
+  test_files: [./build/3.1.20_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: "bitwise_operators_tests"       # name of the test suite to load from in the xml
+    test_count: 1                  # number of tests to find in the test suite 

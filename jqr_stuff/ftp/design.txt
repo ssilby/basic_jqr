@@ -1,0 +1,12 @@
+For the hashtable
+
+admin password 1
+user passwd 2
+
+have all users automatically added to the hashtable
+
+When a user logs in, their password is checked against the struct and that struct is used for that session if it matches.
+
+the program then checks the permission level and provides the appropriate menu
+
+The user will enter a user or admin function

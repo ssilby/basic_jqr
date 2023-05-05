@@ -1,0 +1,10 @@
+- choices:
+  - O(1)
+  - O(n)
+  - O(n log n)
+  - O(n ^ 2)
+  - O(2 ^ n)
+  hash: $2b$11$c2rDwGRTYI73jFdPl0ZZ4OsGI94l96M8nEBQr4iC6XgmMXqwUGoxC
+  text: In the `src` folder look at the implementation in `insertion_sort.py` What
+    is the Big-O complexity of the implementation.
+  type: MC

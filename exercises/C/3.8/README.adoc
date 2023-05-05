@@ -1,0 +1,76 @@
+== Overview
+
+This item covers 3.8.1, 3.8.2, and 3.8.3:
+
+* Demonstrate the ability to handle partial reads and writes during serialization and de-serialization
+
+* Demonstrate the ability to serialize fixed-size, multi-byte types between systems of different endianness
+	
+* Demonstrate the ability to serialize and de-serialize variable-sized data structures between systems of differing endianness
+
+Your task is to implement a serialization protocol to serialize and deserialize data according to the link:protocol.adoc[provided specification] and the function prototypes in the exercise.
+
+To better understand the protocol, and for a comparison of the binary stream and the data structures, see the functions in link:tests/general_tests.c[tests/general_tests.c] used to test your code. 
+
+For simplicity, you can use 3.8.2's issue to consolidate all three items.
+
+== Your Code
+
+Your function prototypes are in link:include/serialize.h[include/serialize.h]. This header file also provides the structs you should use to implement the protocol. 
+
+For debugging and troubleshooting, you may also reference the helper functions in link:tests/helper_functions.h[include/helper_functions.h] to print a visual representation of objects. Note that this code is written for test cases and may not be suitable for your solution, but can assist in understanding the protocol. 
+
+Your code should implement the function prototypes in your source folder: link:src/serialize.c[src/serialize.c].
+
+You should use the read and write functions to interface with your file descriptor. You should correctly handle partial reads and writes. 
+
+== Test Cases
+
+There are three test suites for this exercise:
+
+* general_tests - which tests the serialization and deserialization of all of the supported protocol types
+
+* edge_cases - which tests handling of null bytes, edge cases, and fuzzing your deserialize function
+
+* partial_io - which tests your code's ability to handle partial reads and writes from the file descriptor. This test suite uses a FIFO 
+
+== Special Notes
+
+Your code: 
+
+* Does not need to support strings larger than what can fit in uint64_t 
+
+* an empty array is represented by initializating the *proto_array_t* type with a NULL value in the field "proto_item_node_t * nodes;". 
+
+## Submission: 
+
+Submit your solutions as
+* `src/serialize.c`
+          
+
+## CI Pipeline
+
+Note: if your CI pipeline does not run when you commit, please ensure you have made a merge request to merge
+your branch into the primary branch. This will trigger the rules for the CI Job configured for this item.
+
+## Build instructions 
+
+To test your C code locally, from this folder, run the following command:
+
+```
+bash ../../../scripts/build.sh
+```
+
+Alternatively, you can run the cmake build commands directly with:
+
+```
+cmake -H. -Bbuild
+cmake --build build
+```
+
+After your build is complete, run the executable
+
+```
+./build/3.8_exe
+```
+

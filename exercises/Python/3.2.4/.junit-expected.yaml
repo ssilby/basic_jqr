@@ -1,0 +1,5 @@
+- overall: 3.2.4
+  test_files: [suite_results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: 3.2.4                # name of the test suite to load from in the xml
+    test_count: 11

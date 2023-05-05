@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
+
+static size_t GetCode(const char* source)
+{
+	// redacted
+	return -1
+}
+
+int main(int argc, char *argv[])
+{
+    char buffer[20];
+
+    FILE *codefile = fopen("../random.txt", "r");
+
+    if (codefile == NULL)
+    {
+    	puts("Unable to open random.txt");
+	exit(1);
+    }
+
+    fgets(buffer, 20, codefile);
+
+    size_t code = GetCode(buffer);
+}

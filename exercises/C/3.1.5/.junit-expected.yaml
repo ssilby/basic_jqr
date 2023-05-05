@@ -1,0 +1,5 @@
+- overall: 3.1.5
+  test_files: [./build/3.1.5_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: operators_tests                # name of the test suite to load from in the xml
+    test_count: 1                    # number of tests to find in the test suite 

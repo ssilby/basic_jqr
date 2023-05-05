@@ -1,0 +1,9 @@
+- overall: 3.1.4
+  test_files: [./build/3.1.4_exe-Results.xml]    # parsed relative to the location of this file
+  sub_items:
+  - name: array_tests                # name of the test suite to load from in the xml
+    test_count: 4                    # number of tests to find in the test suite 
+  - name: matrix_tests
+    test_count: 2
+  - name: cumulative_suite
+    test_count: 1
